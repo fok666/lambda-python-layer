@@ -1,0 +1,7 @@
+# Example requirements.txt for Lambda layer
+# Add your Python dependencies here
+
+numpy==1.26.4
+requests==2.31.0
+boto3==1.34.51
+Pillow==10.4.0
