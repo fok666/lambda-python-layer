@@ -2,6 +2,10 @@
 
 Build AWS Lambda deployment packages and layers for multiple Python versions (3.10+) and architectures (x86_64/arm64).
 
+[![Dependabot Updates](https://github.com/fok666/lambda-python-layer/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/fok666/lambda-python-layer/actions/workflows/dependabot/dependabot-updates) [![Build and Release Multi-Arch Docker Images](https://github.com/fok666/lambda-python-layer/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/fok666/lambda-python-layer/actions/workflows/build-and-release.yml)
+
+Inspired by [LambdaZipper](https://github.com/tiivik/LambdaZipper)
+
 ## Features
 
 - 🐍 **Multiple Python versions**: Support for Python 3.10, 3.11, 3.12, 3.13, and 3.14 (default)
