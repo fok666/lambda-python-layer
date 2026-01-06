@@ -313,41 +313,6 @@ docker run --rm \
   lambda-zipper:custom numpy
 ```
 
-## Migration Guide
-
-### Migrating from Previous Versions
-
-**Old behavior** (required explicit flags):
-```bash
-./build-multiarch.sh --requirements requirements.txt --python 3.13
-```
-
-**New behavior** (smart defaults):
-```bash
-./build-multiarch.sh  # Uses requirements.txt and Python 3.14 by default
-```
-
-**Key Changes:**
-- Default Python version changed from 3.13 → 3.14
-- `-r` or `--requirements` flag now optional (defaults to `requirements.txt`)
-- Single combined archive is now the default (use `--individual` for old behavior)
-- Both architectures built by default (use `--skip-arm64` or `--skip-x86` to build only one)
-
-### Updating Existing Scripts
-
-If you have scripts using the old syntax, they will continue to work. However, you can simplify them:
-
-```bash
-# Old way (still works)
-./build-multiarch.sh --requirements requirements.txt --python 3.13
-
-# New simplified way (if using defaults)
-./build-multiarch.sh --python 3.13
-
-# Or just use all defaults
-./build-multiarch.sh
-```
-
 ## Output File Naming
 
 Archives are named with the following pattern:
