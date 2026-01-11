@@ -1,0 +1,34 @@
+ARG PYTHON_VERSION=3.11
+FROM amazonlinux:2
+
+# Install base dependencies
+RUN yum -y install git zip tar gzip gcc gcc-c++ cmake make \
+    wget openssl11-devel bzip2-devel libffi-devel \
+    zlib-devel xz-devel sqlite-devel readline-devel xz && \
+    yum clean all
+
+# Accept Python version as build arg (supports 3.10, 3.11)
+ARG PYTHON_VERSION
+
+# Install Python - build from source for AL2
+RUN cd /tmp && \
+    wget https://www.python.org/ftp/python/${PYTHON_VERSION}.0/Python-${PYTHON_VERSION}.0.tar.xz && \
+    tar xf Python-${PYTHON_VERSION}.0.tar.xz && \
+    cd Python-${PYTHON_VERSION}.0 && \
+    ./configure --enable-optimizations --with-ensurepip=install && \
+    make -j$(nproc) && \
+    make altinstall && \
+    cd / && \
+    rm -rf /tmp/Python-${PYTHON_VERSION}.0*
+
+# Create symlink for easier access
+RUN ln -sf /usr/local/bin/python${PYTHON_VERSION} /usr/local/bin/python3 && \
+    ln -sf /usr/local/bin/pip${PYTHON_VERSION} /usr/local/bin/pip3
+
+# Upgrade pip
+RUN python3 -m pip install --upgrade pip
+
+ADD package.sh /
+RUN chmod +x /package.sh
+
+ENTRYPOINT ["/package.sh"]
