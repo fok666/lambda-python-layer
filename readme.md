@@ -30,8 +30,11 @@ Simply run the build script with no arguments:
 - Reads from `requirements.txt` in the current directory
 - Builds for both x86_64 and arm64 architectures
 - Creates single combined archive per architecture
+- Automatically uses the correct Amazon Linux version for Lambda compatibility
 
 **Result**: `combined-python3.14-x86_64.zip` and `combined-python3.14-aarch64.zip` in `./output/`
+
+> **Note**: This tool uses Amazon Linux 2 for Python 3.10-3.11 and Amazon Linux 2023 for Python 3.12+ to ensure compatibility with [AWS Lambda Python runtimes](https://docs.aws.amazon.com/lambda/latest/dg/lambda-python.html).
 
 ### Customizing the Build
 
@@ -131,15 +134,21 @@ docker run --rm \
 
 ## Supported Python Versions
 
-| Python Version | Amazon Linux 2023 | Installation Method | Status |
-|----------------|-------------------|---------------------|--------|
-| 3.10           | ✅ Available      | dnf package         | Supported |
-| 3.11           | ✅ Available      | dnf package         | Supported |
-| 3.12           | ✅ Available      | dnf package         | Supported |
-| 3.13           | ✅ Available      | dnf package         | Supported |
-| 3.14           | ⚙️ Built from source | Compiled with optimizations | Supported (Default) |
+This project automatically uses the appropriate Amazon Linux version based on [AWS Lambda Python runtime requirements](https://docs.aws.amazon.com/lambda/latest/dg/lambda-python.html):
 
-**Note**: Python 3.14 is automatically compiled from source when building the Docker image, which takes longer but ensures compatibility with the latest Python version.
+| Python Version | Base OS | Installation Method | Lambda Runtime Compatibility |
+|----------------|---------|---------------------|------------------------------|
+| 3.10           | Amazon Linux 2 | Built from source | ✅ python3.10 runtime |
+| 3.11           | Amazon Linux 2 | Built from source | ✅ python3.11 runtime |
+| 3.12           | Amazon Linux 2023 | dnf package | ✅ python3.12 runtime |
+| 3.13           | Amazon Linux 2023 | dnf package | ✅ python3.13 runtime |
+| 3.14           | Amazon Linux 2023 | Built from source | ⚙️ Future runtime (Default) |
+
+**Key Points:**
+- **Python 3.10 & 3.11**: Use Amazon Linux 2 (matches Lambda runtime environment)
+- **Python 3.12 & 3.13**: Use Amazon Linux 2023 (matches Lambda runtime environment)
+- **Python 3.14**: Uses Amazon Linux 2023, compiled from source for latest features
+- All versions are built with development headers for compiling binary packages
 
 ## Output Formats
 
@@ -235,7 +244,9 @@ Build for Python 3.10 with specific requirements:
 
 ```
 .
-├── Dockerfile              # Multi-version, multi-arch capable Docker image
+├── Dockerfile.al2         # Amazon Linux 2 image (Python 3.10-3.11)
+├── Dockerfile.al2023      # Amazon Linux 2023 image (Python 3.12-3.14)
+├── Dockerfile             # Default (points to AL2023)
 ├── package.sh             # Packaging script with requirements.txt support
 ├── build-multiarch.sh     # Helper script for multi-arch builds
 ├── requirements.example.txt
@@ -244,11 +255,12 @@ Build for Python 3.10 with specific requirements:
 
 ## How It Works
 
-1. **Base Image**: Uses Amazon Linux 2023 for Lambda runtime compatibility
+1. **Base Image Selection**: Automatically chooses Amazon Linux 2 (for Python 3.10-3.11) or Amazon Linux 2023 (for Python 3.12+) to match AWS Lambda runtime environments
 2. **Python Installation**: Installs specified Python version (3.10-3.14) with development headers
-3. **Package Installation**: Uses pip with `--target` flag to install packages
-4. **Packaging**: Creates zip archives with proper Lambda Layer structure
-5. **Multi-arch**: Leverages Docker buildx for platform-specific builds
+3. **Package Installation**: Uses pip with `--target` flag to install packages with proper dependencies
+4. **Packaging**: Creates zip archives with proper Lambda Layer structure (`python/lib/pythonX.Y/site-packages/`)
+5. **Multi-arch**: Leverages Docker buildx for platform-specific builds (x86_64 and arm64)
+6. **Runtime Compatibility**: Ensures binary compatibility with AWS Lambda execution environments
 
 ## Troubleshooting
 
