@@ -49,8 +49,8 @@ jobs:
             type=raw,value=python${{ matrix.python-version }}-amd64-latest,enable={{is_default_branch}}
             type=ref,event=branch,suffix=-python${{ matrix.python-version }}-amd64
             type=ref,event=pr,suffix=-python${{ matrix.python-version }}-amd64
-            type=semver,pattern={{version}},suffix=-python${{ matrix.python-version }}-amd64
-            type=semver,pattern={{major}}.{{minor}},suffix=-python${{ matrix.python-version }}-amd64
+            type=semver,pattern=v{{version}},suffix=-python${{ matrix.python-version }}-amd64
+            type=semver,pattern=v{{major}}.{{minor}},suffix=-python${{ matrix.python-version }}-amd64
             type=sha,suffix=-python${{ matrix.python-version }}-amd64
 
       - name: Build and push AMD64 image
@@ -99,8 +99,8 @@ jobs:
             type=raw,value=python${{ matrix.python-version }}-arm64-latest,enable={{is_default_branch}}
             type=ref,event=branch,suffix=-python${{ matrix.python-version }}-arm64
             type=ref,event=pr,suffix=-python${{ matrix.python-version }}-arm64
-            type=semver,pattern={{version}},suffix=-python${{ matrix.python-version }}-arm64
-            type=semver,pattern={{major}}.{{minor}},suffix=-python${{ matrix.python-version }}-arm64
+            type=semver,pattern=v{{version}},suffix=-python${{ matrix.python-version }}-arm64
+            type=semver,pattern=v{{major}}.{{minor}},suffix=-python${{ matrix.python-version }}-arm64
             type=sha,suffix=-python${{ matrix.python-version }}-arm64
 
       - name: Build and push ARM64 image
