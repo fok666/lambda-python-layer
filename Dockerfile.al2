@@ -2,7 +2,7 @@ ARG PYTHON_VERSION=3.11
 FROM amazonlinux:2
 
 # Install base dependencies
-RUN yum -y install git zip tar gzip gcc gcc-c++ cmake \
+RUN yum -y install git zip tar gzip gcc gcc-c++ cmake make \
     wget openssl11-devel bzip2-devel libffi-devel \
     zlib-devel xz-devel sqlite-devel readline-devel xz && \
     yum clean all
