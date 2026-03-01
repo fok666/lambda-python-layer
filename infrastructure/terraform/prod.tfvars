@@ -34,10 +34,15 @@ ec2_volume_size = 50
 # Max build time before instance self-terminates (safety net)
 ec2_max_build_time_minutes = 30
 
-# CORS origins - restrict to your GitHub Pages URL in production
+# CORS origins - MUST be restricted to your GitHub Pages URL in production.
+# Using ["*"] exposes the API to cross-origin requests from any website.
 # Example: ["https://yourusername.github.io"]
-allowed_origins = ["*"]
+# allowed_origins = ["https://yourusername.github.io"]
+allowed_origins = ["https://fok666.github.io"]  # TODO: replace with your actual frontend origin
 
-# API request limits
-# api_throttle_rate  = 10
-# api_throttle_burst = 20
+# API request limits (per-stage; tune down for tighter abuse prevention)
+api_throttle_rate  = 5   # requests per second
+api_throttle_burst = 10  # burst limit
+
+# Maximum concurrent builds (each may launch up to 2 EC2 Spot instances)
+max_active_builds = 10
