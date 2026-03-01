@@ -28,7 +28,10 @@ import boto3
 from botocore.exceptions import ClientError
 
 dynamodb = boto3.resource("dynamodb")
-s3_client = boto3.client("s3")
+# Region must be explicit when generating presigned URLs with STS credentials.
+# Without it boto3 defaults to us-east-1, causing a signature mismatch for
+# buckets in other regions.
+s3_client = boto3.client("s3", region_name=os.environ.get("AWS_REGION"))
 
 TABLE_NAME = os.environ["DYNAMODB_TABLE"]
 S3_BUCKET = os.environ["S3_BUCKET"]
