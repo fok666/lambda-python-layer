@@ -86,17 +86,20 @@ def handler(event, context):
     })
 
     # --- Queue for processing ---
-    sqs.send_message(
-        QueueUrl=QUEUE_URL,
-        MessageBody=json.dumps({
+    send_kwargs = {
+        "QueueUrl": QUEUE_URL,
+        "MessageBody": json.dumps({
             "build_id": build_id,
             "python_version": python_version,
             "architectures": architectures,
             "requirements": requirements,
             "single_file": single_file,
         }),
-        MessageGroupId=build_id[:8] if QUEUE_URL.endswith(".fifo") else None,
-    )
+    }
+    if QUEUE_URL.endswith(".fifo"):
+        send_kwargs["MessageGroupId"] = build_id[:8]
+
+    sqs.send_message(**send_kwargs)
 
     return _response(200, {
         "build_id": build_id,
