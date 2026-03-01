@@ -203,3 +203,21 @@ variable "sqs_max_receive_count" {
   type        = number
   default     = 3
 }
+
+variable "max_active_builds" {
+  description = <<-EOT
+    Maximum number of concurrently active builds (queued + in-flight).
+    Requests that would exceed this limit receive HTTP 429.
+    Each active build may launch up to 2 EC2 Spot instances (one per architecture),
+    so this cap directly bounds worst-case concurrent EC2 costs.
+
+    Default: 10 (= up to 20 simultaneous Spot instances)
+  EOT
+  type        = number
+  default     = 10
+
+  validation {
+    condition     = var.max_active_builds >= 1 && var.max_active_builds <= 100
+    error_message = "max_active_builds must be between 1 and 100."
+  }
+}
