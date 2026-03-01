@@ -230,9 +230,13 @@ trap cleanup EXIT
 
 # --- Install Docker and CloudWatch Agent ---
 echo "$(date): Installing Docker and CloudWatch Agent..."
-dnf install -y docker git aws-cli amazon-cloudwatch-agent 2>/dev/null || yum install -y docker git aws-cli
+dnf install -y docker git aws-cli amazon-cloudwatch-agent python3-pip 2>/dev/null || yum install -y docker git aws-cli python3-pip
 systemctl start docker
 systemctl enable docker
+
+# --- Install boto3 for system Python (AL2023 aws-cli v2 uses its own isolated Python) ---
+echo "$(date): Installing boto3 for system Python..."
+pip3 install boto3 --quiet
 
 # --- Configure CloudWatch Logs streaming ---
 echo "$(date): Configuring CloudWatch Logs streaming..."
