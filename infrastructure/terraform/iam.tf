@@ -106,6 +106,17 @@ resource "aws_iam_role_policy" "lambda_process" {
         Resource = "*"
       },
       {
+        # Required to create AWSServiceRoleForEC2Spot on first Spot usage
+        Effect = "Allow"
+        Action = "iam:CreateServiceLinkedRole"
+        Resource = "arn:aws:iam::*:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
+        Condition = {
+          StringLike = {
+            "iam:AWSServiceName" = "spot.amazonaws.com"
+          }
+        }
+      },
+      {
         Effect   = "Allow"
         Action   = "iam:PassRole"
         Resource = aws_iam_role.ec2_builder.arn

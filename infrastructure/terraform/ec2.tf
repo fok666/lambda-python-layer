@@ -6,6 +6,19 @@
 # Each instance self-terminates after build completion or timeout.
 # =============================================================================
 
+# Pre-create the EC2 Spot service-linked role so Lambda doesn't need to create it at runtime.
+# This role is account-global and only needs to exist once.
+# Terraform will silently import it if it already exists.
+resource "aws_iam_service_linked_role" "ec2_spot" {
+  aws_service_name = "spot.amazonaws.com"
+  description      = "Service-linked role for EC2 Spot Instances"
+
+  # Ignore if this role already exists in the account
+  lifecycle {
+    ignore_changes = [description]
+  }
+}
+
 # Latest Amazon Linux 2023 AMI
 data "aws_ami" "al2023" {
   most_recent = true
