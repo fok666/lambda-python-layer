@@ -1,0 +1,18 @@
+# Terraform state files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Build artifacts
+.build/
+
+# Variables file (may contain secrets)
+terraform.tfvars
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Plan files
+*.tfplan
