@@ -78,6 +78,7 @@ resource "aws_lambda_function" "submit_build" {
       DYNAMODB_TABLE     = aws_dynamodb_table.builds.name
       SQS_QUEUE_URL      = aws_sqs_queue.build_queue.url
       ARTIFACT_TTL_HOURS = tostring(var.artifact_ttl_hours)
+      MAX_ACTIVE_BUILDS  = tostring(var.max_active_builds)
     }
   }
 
