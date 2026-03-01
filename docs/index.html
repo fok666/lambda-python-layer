@@ -615,6 +615,9 @@ Pillow==12.1.1"></textarea>
     // =========================================================================
     const STORAGE_KEY = 'lambda-layer-builder';
     const POLL_INTERVAL = 10000; // 10 seconds
+    // Slightly longer than the EC2 watchdog (MAX_BUILD_MINUTES=30) so the API
+    // has a chance to write FAILED before we give up on the client side.
+    const BUILD_TIMEOUT_SECONDS = 35 * 60;
 
     const API_URL = 'https://9nij0o9osa.execute-api.eu-central-1.amazonaws.com';
 
@@ -742,6 +745,16 @@ Pillow==12.1.1"></textarea>
             stopPolling(buildId);
           }
 
+          // Stop polling if the build has been running too long (timed out).
+          // The EC2 watchdog marks it FAILED after 30 min, but if that update
+          // hasn't propagated yet we stop client-side polling anyway.
+          const age = Math.floor(Date.now() / 1000) - (build.created_at || 0);
+          if (!['COMPLETED', 'FAILED'].includes(build.status) && age > BUILD_TIMEOUT_SECONDS) {
+            stopPolling(buildId);
+            build.status = 'FAILED';
+            build.error = build.error || 'Build timed out (no response after 35 minutes).';
+          }
+
           saveState();
           renderBuilds();
         }
@@ -755,6 +768,13 @@ Pillow==12.1.1"></textarea>
     // =========================================================================
     function startPolling(buildId) {
       if (state.polling[buildId]) return;
+      // Don't resume polling for builds that are already past the timeout
+      // (e.g., stale entries restored from localStorage after a page reload).
+      const build = state.builds.find(b => b.id === buildId);
+      if (build && build.created_at &&
+          Math.floor(Date.now() / 1000) - build.created_at > BUILD_TIMEOUT_SECONDS) {
+        return;
+      }
       checkStatus(buildId); // immediate check
       state.polling[buildId] = setInterval(() => checkStatus(buildId), POLL_INTERVAL);
     }
