@@ -99,3 +99,17 @@ resource "aws_lambda_permission" "check_status_apigw" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
 }
+
+# =============================================================================
+# Security checks
+# =============================================================================
+
+# Emit a non-fatal warning when CORS is open to all origins.
+# This is acceptable during development but should be restricted in production
+# to the GitHub Pages URL (e.g., ["https://yourusername.github.io"]).
+check "cors_not_wildcard" {
+  assert {
+    condition     = !contains(var.allowed_origins, "*")
+    error_message = "WARNING: allowed_origins contains '*' — CORS is open to every origin. Restrict to your frontend URL in production (e.g., [\"https://yourusername.github.io\"])."
+  }
+}
