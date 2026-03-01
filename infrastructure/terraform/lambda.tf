@@ -82,6 +82,7 @@ resource "aws_lambda_function" "process_build" {
       EC2_INSTANCE_TYPE    = var.ec2_instance_type
       MAX_BUILD_MINUTES    = tostring(var.ec2_max_build_time_minutes)
       PROJECT_NAME         = var.project_name
+      EC2_BUILD_LOG_GROUP  = aws_cloudwatch_log_group.ec2_builds.name
     }
   }
 

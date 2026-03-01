@@ -32,6 +32,7 @@ GITHUB_REPO_URL = os.environ.get("GITHUB_REPO_URL", "https://github.com/fok666/l
 EC2_INSTANCE_TYPE = os.environ.get("EC2_INSTANCE_TYPE", "c5.xlarge")
 MAX_BUILD_MINUTES = int(os.environ.get("MAX_BUILD_MINUTES", "30"))
 PROJECT_NAME = os.environ.get("PROJECT_NAME", "lambda-layer-builder")
+LOG_GROUP_NAME = os.environ.get("EC2_BUILD_LOG_GROUP", "/lambda-layer-builder/prod/ec2-builds")
 
 
 def handler(event, context):
@@ -67,6 +68,7 @@ def _process_build(message):
         architectures=architectures,
         requirements=requirements,
         single_file=single_file,
+        log_group_name=LOG_GROUP_NAME,
     )
 
     # Pick a random subnet for AZ diversity
@@ -149,7 +151,7 @@ def _update_status(build_id, status, error=None):
         print(f"Failed to update status for {build_id}: {e}")
 
 
-def _generate_user_data(build_id, python_version, architectures, requirements, single_file):
+def _generate_user_data(build_id, python_version, architectures, requirements, single_file, log_group_name):
     """Generate the EC2 user-data bash script for the build."""
     req_escaped = requirements.replace("\\", "\\\\").replace("'", "'\\''")
     arches_str = " ".join(architectures)
@@ -208,11 +210,42 @@ cleanup() {{
 }}
 trap cleanup EXIT
 
-# --- Install Docker ---
-echo "$(date): Installing Docker..."
-dnf install -y docker git aws-cli 2>/dev/null || yum install -y docker git aws-cli
+# --- Install Docker and CloudWatch Agent ---
+echo "$(date): Installing Docker and CloudWatch Agent..."
+dnf install -y docker git aws-cli amazon-cloudwatch-agent 2>/dev/null || yum install -y docker git aws-cli
 systemctl start docker
 systemctl enable docker
+
+# --- Configure CloudWatch Logs streaming ---
+# Stream /var/log/build.log to CloudWatch; each build gets its own log stream.
+echo "$(date): Configuring CloudWatch Logs streaming..."
+mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWEOF'
+{{
+  "logs": {{
+    "logs_collected": {{
+      "files": {{
+        "collect_list": [
+          {{
+            "file_path": "/var/log/build.log",
+            "log_group_name": "{log_group_name}",
+            "log_stream_name": "{build_id}",
+            "timezone": "UTC",
+            "timestamp_format": "%Y-%m-%dT%H:%M:%S"
+          }}
+        ]
+      }}
+    }}
+  }}
+}}
+CWEOF
+
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+    -a fetch-config -m ec2 \
+    -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json \
+    -s 2>/dev/null \
+  && echo "$(date): CloudWatch streaming active → {log_group_name}/{build_id}" \
+  || echo "$(date): WARNING: CloudWatch agent failed to start"
 
 # Enable QEMU for cross-architecture builds
 docker run --rm --privileged multiarch/qemu-user-static --reset -p yes 2>/dev/null || true

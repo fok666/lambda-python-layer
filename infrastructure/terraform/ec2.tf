@@ -6,6 +6,17 @@
 # Each instance self-terminates after build completion or timeout.
 # =============================================================================
 
+# CloudWatch Log Group for EC2 build output
+# Each build writes to its own log stream (stream name = build_id).
+resource "aws_cloudwatch_log_group" "ec2_builds" {
+  name              = "/${local.name_prefix}/ec2-builds"
+  retention_in_days = 30
+
+  tags = {
+    Name = "${local.name_prefix}-ec2-builds"
+  }
+}
+
 # Pre-create the EC2 Spot service-linked role so Lambda doesn't need to create it at runtime.
 # This role is account-global and only needs to exist once.
 # Terraform will silently import it if it already exists.

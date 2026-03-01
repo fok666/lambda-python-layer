@@ -246,6 +246,16 @@ resource "aws_iam_role_policy" "ec2_builder" {
           "ec2:DescribeInstances",
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams",
+        ]
+        Resource = "${aws_cloudwatch_log_group.ec2_builds.arn}:*"
       }
     ]
   })
