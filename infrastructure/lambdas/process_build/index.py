@@ -387,7 +387,7 @@ table = boto3.resource('dynamodb', region_name=region).Table(table_name)
 
 
 def _mark_failed(reason):
-    """Best-effort: mark the build FAILED in DynamoDB."""
+    # Best-effort: mark the build FAILED in DynamoDB.
     for attempt in range(3):
         try:
             table.update_item(

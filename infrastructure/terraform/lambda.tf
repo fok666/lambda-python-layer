@@ -2,6 +2,42 @@
 # Lambda Functions
 # =============================================================================
 
+# =============================================================================
+# boto3 Lambda Layer (Python 3.13 no longer bundles the AWS SDK)
+# =============================================================================
+
+resource "null_resource" "boto3_layer" {
+  triggers = {
+    requirements = filesha256("${path.module}/boto3_layer_requirements.txt")
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      rm -rf ${path.module}/.build/boto3_layer
+      mkdir -p ${path.module}/.build/boto3_layer/python
+      pip3 install \
+        -r ${path.module}/boto3_layer_requirements.txt \
+        -t ${path.module}/.build/boto3_layer/python \
+        --quiet
+    EOT
+  }
+}
+
+data "archive_file" "boto3_layer" {
+  type        = "zip"
+  source_dir  = "${path.module}/.build/boto3_layer"
+  output_path = "${path.module}/.build/boto3_layer.zip"
+  depends_on  = [null_resource.boto3_layer]
+}
+
+resource "aws_lambda_layer_version" "boto3" {
+  filename         = data.archive_file.boto3_layer.output_path
+  layer_name       = "${local.name_prefix}-boto3"
+  source_code_hash = data.archive_file.boto3_layer.output_base64sha256
+
+  compatible_runtimes = ["python3.13"]
+}
+
 # Package Lambda source code into zip archives
 data "archive_file" "submit_build" {
   type        = "zip"
@@ -35,6 +71,7 @@ resource "aws_lambda_function" "submit_build" {
   timeout          = 30
   memory_size      = 128
   role             = aws_iam_role.lambda_submit.arn
+  layers           = [aws_lambda_layer_version.boto3.arn]
 
   environment {
     variables = {
@@ -68,6 +105,7 @@ resource "aws_lambda_function" "process_build" {
   timeout          = 60
   memory_size      = 256
   role             = aws_iam_role.lambda_process.arn
+  layers           = [aws_lambda_layer_version.boto3.arn]
 
   environment {
     variables = {
@@ -121,6 +159,7 @@ resource "aws_lambda_function" "check_status" {
   timeout          = 15
   memory_size      = 128
   role             = aws_iam_role.lambda_status.arn
+  layers           = [aws_lambda_layer_version.boto3.arn]
 
   environment {
     variables = {
