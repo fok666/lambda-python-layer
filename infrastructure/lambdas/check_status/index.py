@@ -110,7 +110,7 @@ def handler(event, context):
                     "filename": filename,
                     "download_url": download_url,
                     "architecture": architecture,
-                    "s3_key": s3_key,
+                    # s3_key intentionally omitted — callers only need the presigned URL
                 })
             except ClientError as e:
                 print(f"Failed to generate presigned URL for {s3_key}: {e}")

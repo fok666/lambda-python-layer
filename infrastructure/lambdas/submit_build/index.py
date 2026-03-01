@@ -16,6 +16,7 @@ import json
 import uuid
 import time
 import os
+import re
 import boto3
 
 dynamodb = boto3.resource("dynamodb")
@@ -28,6 +29,7 @@ ARTIFACT_TTL_HOURS = int(os.environ.get("ARTIFACT_TTL_HOURS", "24"))
 VALID_PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13", "3.14"]
 VALID_ARCHITECTURES = ["x86_64", "arm64"]
 MAX_REQUIREMENTS_LENGTH = 10000  # 10KB max
+MAX_ACTIVE_BUILDS = int(os.environ.get("MAX_ACTIVE_BUILDS", "10"))
 
 
 def handler(event, context):
@@ -46,6 +48,10 @@ def handler(event, context):
         return _response(400, {
             "error": f"requirements too large (max {MAX_REQUIREMENTS_LENGTH} chars)"
         })
+
+    req_error = _validate_requirements(requirements)
+    if req_error:
+        return _response(400, {"error": req_error})
 
     python_version = body.get("python_version", "3.13")
     if python_version not in VALID_PYTHON_VERSIONS:
@@ -66,6 +72,35 @@ def handler(event, context):
     single_file = body.get("single_file", True)
     if not isinstance(single_file, bool):
         return _response(400, {"error": "single_file must be a boolean"})
+
+    # --- Enforce concurrent-build cap ---
+    # Sum approximate queued + in-flight messages to estimate active builds.
+    # This prevents a single caller from queueing unbounded EC2 Spot launches.
+    try:
+        attrs = sqs.get_queue_attributes(
+            QueueUrl=QUEUE_URL,
+            AttributeNames=[
+                "ApproximateNumberOfMessages",
+                "ApproximateNumberOfMessagesNotVisible",
+            ],
+        )["Attributes"]
+        active = (
+            int(attrs.get("ApproximateNumberOfMessages", 0))
+            + int(attrs.get("ApproximateNumberOfMessagesNotVisible", 0))
+        )
+        if active >= MAX_ACTIVE_BUILDS:
+            return _response(
+                429,
+                {
+                    "error": (
+                        f"Build queue is at capacity ({MAX_ACTIVE_BUILDS} concurrent builds). "
+                        "Please retry later."
+                    )
+                },
+            )
+    except Exception as e:
+        print(f"WARNING: could not check queue depth: {e}")
+        # Fail open — allow the build rather than blocking on a transient error.
 
     # --- Create build record ---
     build_id = str(uuid.uuid4())
@@ -111,6 +146,47 @@ def handler(event, context):
         "single_file": single_file,
         "expires_at": expires_at,
     })
+
+
+def _validate_requirements(requirements: str):
+    """
+    Validate requirements.txt content.
+
+    Returns an error string if invalid, or None if the content is acceptable.
+
+    Rules:
+    - URL-based installs (git+, http://, https://, file://, vcs+...) are rejected.
+      They bypass PyPI and allow arbitrary code to be pulled from any host.
+    - Recursive includes (-r / --requirement) and constraint files
+      (-c / --constraint) are rejected to prevent file-system reads on the
+      builder instance.
+    - Lines with obvious shell metacharacters (;, |, &, $, `) are rejected
+      as a defence-in-depth measure against injection in downstream tools.
+    """
+    URL_PREFIXES = ("git+", "http://", "https://", "file://", "svn+", "hg+", "bzr+")
+    BLOCKED_FLAGS = ("-r ", "-r\t", "--requirement", "-c ", "-c\t", "--constraint")
+    SHELL_META = re.compile(r'[;|&$`]')
+
+    for lineno, raw_line in enumerate(requirements.splitlines(), 1):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if any(line.startswith(p) for p in URL_PREFIXES):
+            return (
+                f"Line {lineno}: URL-based requirements are not allowed. "
+                "Specify packages by name and version (e.g., requests==2.32.4)."
+            )
+        if any(line.startswith(f) for f in BLOCKED_FLAGS):
+            return (
+                f"Line {lineno}: recursive includes (-r) and constraint files (-c) "
+                "are not allowed."
+            )
+        if SHELL_META.search(line):
+            return (
+                f"Line {lineno}: shell metacharacters (;, |, &, $, `) are not "
+                "allowed in requirements."
+            )
+    return None
 
 
 def _response(status_code, body):

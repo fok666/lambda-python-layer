@@ -174,7 +174,11 @@ def _update_status(build_id, status, error=None):
 
 def _generate_user_data(build_id, arch, python_version, requirements, single_file, log_group_name):
     """Generate the EC2 user-data bash script for a single-architecture build."""
-    req_escaped = requirements.replace("\\", "\\\\").replace("'", "'\\''")
+    # Base64-encode requirements to prevent heredoc/shell-injection.
+    # Embedding raw user content in a bash heredoc is unsafe: a line matching
+    # the sentinel (REQUIREMENTS_EOF) would break out of the heredoc and allow
+    # arbitrary command execution on the EC2 instance.
+    req_b64 = base64.b64encode(requirements.encode("utf-8")).decode("ascii")
     if arch == "arm64":
         arch_label = "arm64"
         platform = "linux/arm64"
@@ -268,11 +272,9 @@ CWEOF
   && echo "$(date): CloudWatch streaming active \u2192 {log_group_name}/{build_id}" \\
   || echo "$(date): WARNING: CloudWatch agent failed to start"
 
-# --- Create requirements file ---
+# --- Create requirements file (base64-encoded to prevent injection) ---
 mkdir -p /build/input /build/output
-cat > /build/input/requirements.txt << 'REQUIREMENTS_EOF'
-{requirements}
-REQUIREMENTS_EOF
+echo '{req_b64}' | base64 -d > /build/input/requirements.txt
 
 echo "$(date): Requirements:"
 cat /build/input/requirements.txt
