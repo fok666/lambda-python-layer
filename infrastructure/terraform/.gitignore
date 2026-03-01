@@ -16,3 +16,6 @@ crash.*.log
 
 # Plan files
 *.tfplan
+
+# .tfvars file
+prod.tfvars
