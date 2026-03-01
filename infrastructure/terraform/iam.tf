@@ -39,6 +39,7 @@ resource "aws_iam_role_policy" "lambda_submit" {
         Effect = "Allow"
         Action = [
           "sqs:SendMessage",
+          "sqs:GetQueueAttributes",
         ]
         Resource = aws_sqs_queue.build_queue.arn
       },
