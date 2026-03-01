@@ -2,7 +2,10 @@
 
 Build AWS Lambda deployment packages and layers for multiple Python versions (3.10+) and architectures (x86_64/arm64).
 
-[![Dependabot Updates](https://github.com/fok666/lambda-python-layer/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/fok666/lambda-python-layer/actions/workflows/dependabot/dependabot-updates) [![Build and Release Multi-Arch Docker Images](https://github.com/fok666/lambda-python-layer/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/fok666/lambda-python-layer/actions/workflows/build-and-release.yml)
+[![CodeQL](https://github.com/fok666/lambda-python-layer/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/fok666/lambda-python-layer/actions/workflows/github-code-scanning/codeql)
+[![Dependabot](https://github.com/fok666/lambda-python-layer/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/fok666/lambda-python-layer/actions/workflows/dependabot/dependabot-updates)
+[![Build and Release](https://github.com/fok666/lambda-python-layer/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/fok666/lambda-python-layer/actions/workflows/build-and-release.yml)
+[![Github Pages](https://github.com/fok666/lambda-python-layer/actions/workflows/static.yml/badge.svg)](https://github.com/fok666/lambda-python-layer/actions/workflows/static.yml)
 
 Inspired by [LambdaZipper](https://github.com/tiivik/LambdaZipper)
 
