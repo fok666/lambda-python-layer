@@ -465,6 +465,61 @@
 
     .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
 
+    /* Tooltip */
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--border);
+      color: var(--text-muted);
+      font-size: 11px;
+      font-style: normal;
+      cursor: default;
+      position: relative;
+      margin-left: 6px;
+      vertical-align: middle;
+      user-select: none;
+    }
+
+    .info-icon:hover .tooltip {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .tooltip {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2d333b;
+      color: var(--text);
+      font-size: 12px;
+      font-style: normal;
+      line-height: 1.5;
+      white-space: nowrap;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 100;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: var(--border);
+    }
+
     /* Toast notification */
     .toast {
       position: fixed;
@@ -583,7 +638,7 @@ Pillow==12.1.1"></textarea>
         </div>
 
         <div class="form-group">
-          <label>Output Format</label>
+          <label>Output Format <i class="info-icon">i<span class="tooltip">Combined: one archive per platform (x86_64 and arm64 bundled separately)</span></i></label>
           <div class="toggle-row">
             <label class="toggle">
               <input type="checkbox" id="singleFile" checked />
