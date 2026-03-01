@@ -30,7 +30,7 @@ resource "aws_iam_service_linked_role" "ec2_spot" {
   }
 }
 
-# Latest Amazon Linux 2023 AMI
+# Latest Amazon Linux 2023 AMI (x86_64)
 data "aws_ami" "al2023" {
   most_recent = true
   owners      = ["amazon"]
@@ -48,6 +48,27 @@ data "aws_ami" "al2023" {
   filter {
     name   = "architecture"
     values = ["x86_64"]
+  }
+}
+
+# Latest Amazon Linux 2023 AMI (arm64 / Graviton)
+data "aws_ami" "al2023_arm64" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-*-arm64"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["arm64"]
   }
 }
 
@@ -100,6 +121,57 @@ resource "aws_launch_template" "builder" {
 
   # User data is provided dynamically by the process_build Lambda
   # This template serves as a base configuration
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# arm64 (Graviton) launch template — identical configuration, arm64 AMI
+resource "aws_launch_template" "builder_arm64" {
+  name_prefix   = "${local.name_prefix}-builder-arm64-"
+  image_id      = data.aws_ami.al2023_arm64.id
+  instance_type = var.ec2_arm64_instance_type
+
+  iam_instance_profile {
+    arn = aws_iam_instance_profile.ec2_builder.arn
+  }
+
+  vpc_security_group_ids = [aws_security_group.builder.id]
+
+  block_device_mappings {
+    device_name = "/dev/xvda"
+
+    ebs {
+      volume_size           = var.ec2_volume_size
+      volume_type           = "gp3"
+      encrypted             = true
+      delete_on_termination = true
+    }
+  }
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name          = "${local.name_prefix}-builder-arm64"
+      Project       = var.project_name
+      AutoTerminate = "true"
+    }
+  }
+
+  tag_specifications {
+    resource_type = "volume"
+    tags = {
+      Name    = "${local.name_prefix}-builder-arm64-vol"
+      Project = var.project_name
+    }
+  }
 
   lifecycle {
     create_before_destroy = true

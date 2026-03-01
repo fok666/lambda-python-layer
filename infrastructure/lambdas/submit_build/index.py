@@ -83,6 +83,8 @@ def handler(event, context):
         "created_at": now,
         "expires_at": expires_at,
         "ttl": expires_at + 86400,  # DynamoDB TTL: 1 day after artifact expiry
+        # Tracks how many per-arch EC2 instances must complete before COMPLETED
+        "pending_arches": len(architectures),
     })
 
     # --- Queue for processing ---

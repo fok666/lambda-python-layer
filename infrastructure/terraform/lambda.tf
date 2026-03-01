@@ -75,14 +75,16 @@ resource "aws_lambda_function" "process_build" {
       S3_BUCKET            = aws_s3_bucket.artifacts.id
       SUBNET_IDS           = join(",", aws_subnet.public[*].id)
       SECURITY_GROUP_ID    = aws_security_group.builder.id
-      LAUNCH_TEMPLATE_ID   = aws_launch_template.builder.id
       INSTANCE_PROFILE_ARN = aws_iam_instance_profile.ec2_builder.arn
-      DOCKER_IMAGE_PREFIX  = var.docker_image_prefix
-      GITHUB_REPO_URL      = var.github_repo_url
-      EC2_INSTANCE_TYPE    = var.ec2_instance_type
-      MAX_BUILD_MINUTES    = tostring(var.ec2_max_build_time_minutes)
-      PROJECT_NAME         = var.project_name
-      EC2_BUILD_LOG_GROUP  = aws_cloudwatch_log_group.ec2_builds.name
+      DOCKER_IMAGE_PREFIX       = var.docker_image_prefix
+      GITHUB_REPO_URL           = var.github_repo_url
+      EC2_INSTANCE_TYPE         = var.ec2_instance_type
+      EC2_ARM64_INSTANCE_TYPE   = var.ec2_arm64_instance_type
+      LAUNCH_TEMPLATE_ID        = aws_launch_template.builder.id
+      LAUNCH_TEMPLATE_ID_ARM64  = aws_launch_template.builder_arm64.id
+      MAX_BUILD_MINUTES         = tostring(var.ec2_max_build_time_minutes)
+      PROJECT_NAME              = var.project_name
+      EC2_BUILD_LOG_GROUP       = aws_cloudwatch_log_group.ec2_builds.name
     }
   }
 

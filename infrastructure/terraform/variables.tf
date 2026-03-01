@@ -68,21 +68,34 @@ variable "github_repo_url" {
 
 variable "ec2_instance_type" {
   description = <<-EOT
-    EC2 instance type for build workers. Needs sufficient CPU and memory
-    for Docker builds and Python package compilation.
+    EC2 instance type for x86_64 build workers.
 
     **Recommended types:**
     - c5.xlarge:  4 vCPU,  8 GB RAM (~$0.04/hr spot) - Good default
     - c5.2xlarge: 8 vCPU, 16 GB RAM (~$0.08/hr spot) - Heavy builds
     - m5.large:   2 vCPU,  8 GB RAM (~$0.02/hr spot) - Light builds
 
-    **Cost Impact:** Spot instances are 60-90% cheaper than on-demand.
-    Typical build takes 5-15 minutes, costing $0.003-$0.02.
-
-    Default: c5.xlarge (best balance of cost and build speed)
+    Default: c5.xlarge
   EOT
   type        = string
   default     = "c5.xlarge"
+}
+
+variable "ec2_arm64_instance_type" {
+  description = <<-EOT
+    EC2 Graviton instance type for arm64 build workers.
+    arm64 packages are always built on native Graviton hardware;
+    QEMU cross-compilation is unreliable for C extension packages.
+
+    **Recommended types:**
+    - c7g.xlarge:  4 vCPU,  8 GB RAM (~$0.03/hr spot) - Good default
+    - c7g.2xlarge: 8 vCPU, 16 GB RAM (~$0.06/hr spot) - Heavy builds
+    - m7g.large:   2 vCPU,  8 GB RAM (~$0.02/hr spot) - Light builds
+
+    Default: c7g.xlarge
+  EOT
+  type        = string
+  default     = "c7g.xlarge"
 }
 
 variable "ec2_volume_size" {
