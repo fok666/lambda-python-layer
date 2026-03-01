@@ -364,16 +364,20 @@ fi
 # --- Atomically record completion in DynamoDB ---
 # ADD arch_s3_keys (StringSet) and decrement pending_arches.
 # The last architecture to complete (pending_arches reaches 0) sets COMPLETED.
+# Errors here are caught inside the Python script so DynamoDB is always updated,
+# even if the update itself fails (the build is then marked FAILED instead of
+# being left stuck in PROCESSING with orphaned S3 files).
 export _BUILD_S3_KEYS="$S3_KEYS"
 export _BUILD_COMPLETED_AT="$(date +%s)"
 
 python3 << 'PYEOF'
-import boto3, os
+import boto3, os, time, sys
 from decimal import Decimal
 
 region = os.environ['AWS_DEFAULT_REGION']
 table_name = "{TABLE_NAME}"
 build_id = "{build_id}"
+arch = "{arch}"
 
 s3_keys_str = os.environ.get('_BUILD_S3_KEYS', '')
 completed_at = int(os.environ.get('_BUILD_COMPLETED_AT', '0'))
@@ -381,34 +385,78 @@ key_list = [k.strip() for k in s3_keys_str.split(',') if k.strip()]
 
 table = boto3.resource('dynamodb', region_name=region).Table(table_name)
 
-resp = table.update_item(
-    Key={{'buildId': build_id}},
-    UpdateExpression='ADD arch_s3_keys :k, pending_arches :n',
-    ExpressionAttributeValues={{
-        ':k': set(key_list),
-        ':n': Decimal('-1'),
-    }},
-    ReturnValues='ALL_NEW',
-)
+
+def _mark_failed(reason):
+    """Best-effort: mark the build FAILED in DynamoDB."""
+    for attempt in range(3):
+        try:
+            table.update_item(
+                Key={{'buildId': build_id}},
+                UpdateExpression='SET #s = :f, error_message = :e',
+                ExpressionAttributeNames={{'#s': 'status'}},
+                ExpressionAttributeValues={{':f': 'FAILED', ':e': reason}},
+            )
+            print('Marked build FAILED: ' + reason)
+            return
+        except Exception as ex:
+            print('WARNING: _mark_failed attempt ' + str(attempt + 1) + ' failed: ' + str(ex))
+            time.sleep(2 ** attempt)
+    print('ERROR: could not update DynamoDB after repeated failures')
+
+
+try:
+    # Step 1: atomically add this arch's S3 keys and decrement the pending counter.
+    resp = table.update_item(
+        Key={{'buildId': build_id}},
+        UpdateExpression='ADD arch_s3_keys :k, pending_arches :n',
+        ExpressionAttributeValues={{
+            ':k': set(key_list),
+            ':n': Decimal('-1'),
+        }},
+        ReturnValues='ALL_NEW',
+    )
+except Exception as e:
+    # S3 upload already succeeded; emit an error but mark the build FAILED so
+    # it never stays stuck in PROCESSING.
+    msg = arch + ' uploaded to S3 but DynamoDB key-registration failed: ' + str(e)
+    print('ERROR: ' + msg)
+    _mark_failed(msg)
+    sys.exit(0)  # Exit cleanly so bash set -e doesn't re-trigger the cleanup trap
+
 pending = int(resp['Attributes'].get('pending_arches', 1))
 if pending <= 0:
+    # Step 2: all architectures finished — set the final COMPLETED status.
     all_keys_set = resp['Attributes'].get('arch_s3_keys', set())
     all_keys = ','.join(sorted(all_keys_set))
     fc = len(all_keys_set)
-    table.update_item(
-        Key={{'buildId': build_id}},
-        UpdateExpression='SET #s = :s, s3_keys = :k, completed_at = :t, file_count = :fc',
-        ExpressionAttributeNames={{'#s': 'status'}},
-        ExpressionAttributeValues={{
-            ':s': 'COMPLETED',
-            ':k': all_keys,
-            ':t': completed_at,
-            ':fc': fc,
-        }},
-    )
-    print('Build COMPLETED: ' + str(fc) + ' file(s), keys: ' + all_keys)
+
+    for attempt in range(3):
+        try:
+            table.update_item(
+                Key={{'buildId': build_id}},
+                UpdateExpression='SET #s = :s, s3_keys = :k, completed_at = :t, file_count = :fc',
+                ExpressionAttributeNames={{'#s': 'status'}},
+                ExpressionAttributeValues={{
+                    ':s': 'COMPLETED',
+                    ':k': all_keys,
+                    ':t': completed_at,
+                    ':fc': fc,
+                }},
+            )
+            print('Build COMPLETED: ' + str(fc) + ' file(s), keys: ' + all_keys)
+            break
+        except Exception as e:
+            if attempt < 2:
+                print('WARNING: COMPLETED update attempt ' + str(attempt + 1) + ' failed, retrying: ' + str(e))
+                time.sleep(2 ** attempt)
+            else:
+                # pending_arches is already 0 so no other instance will retry;
+                # mark FAILED so the caller gets a definitive answer.
+                msg = 'S3 upload succeeded but failed to set COMPLETED status: ' + str(e)
+                print('ERROR: ' + msg)
+                _mark_failed(msg)
 else:
-    print('{arch} done, ' + str(pending) + ' arch(es) still pending')
+    print(arch + ' done, ' + str(pending) + ' arch(es) still pending')
 PYEOF
 
 echo ""
