@@ -63,7 +63,7 @@ jobs:
             type=sha,suffix=-python${{ matrix.python-version }}-amd64
 
       - name: Build and push AMD64 image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ steps.dockerfile.outputs.path }}
@@ -123,7 +123,7 @@ jobs:
             type=sha,suffix=-python${{ matrix.python-version }}-arm64
 
       - name: Build and push ARM64 image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ steps.dockerfile.outputs.path }}
