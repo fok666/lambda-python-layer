@@ -1,5 +1,5 @@
 ARG PYTHON_VERSION=3.13
-FROM amazonlinux:2023
+FROM amazonlinux:2023.12.20261112.0
 
 # Install base dependencies
 RUN dnf -y install git zip tar gzip gcc gcc-c++ cmake \
